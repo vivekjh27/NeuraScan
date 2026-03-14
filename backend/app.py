@@ -42,6 +42,18 @@ def demo_predict(file_bytes: bytes):
     return probs
 
 
+@app.route("/")
+def home():
+    return send_from_directory("../frontend", "index.html")
+
+@app.route("/upload")
+def upload():
+    return send_from_directory("../frontend", "upload.html")
+
+@app.route("/result")
+def result():
+    return send_from_directory("../frontend", "result.html")
+
 @app.route("/predict", methods=["POST"])
 def predict():
     if "file" not in request.files:
