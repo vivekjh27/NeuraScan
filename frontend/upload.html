@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NeuraScan — Upload MRI Scan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:      #060b14;
+    --surface: #0d1828;
+    --surface2:#112035;
+    --border:  rgba(32,201,151,.15);
+    --accent:  #20c997;
+    --accent2: #12b886;
+    --text:    #d1f2e5;
+    --muted:   #6a8aaa;
+    --serif:   "DM Serif Display", serif;
+    --sans:    "DM Sans", sans-serif;
+    --mono:    "Space Mono", monospace;
+  }
+  body {
+    background:var(--bg); color:var(--text);
+    font-family:var(--sans); font-size:16px; line-height:1.7;
+    min-height:100vh;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:40px 24px;
+  }
+  h1,h2,h3 { font-family:var(--serif); line-height:1.2; }
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--accent); border-radius:4px; }
+
+  /* Back button */
+  .back-btn {
+    position:fixed; top:24px; left:24px;
+    background:var(--surface); border:1px solid var(--border);
+    color:var(--text); padding:10px 22px; border-radius:50px;
+    font-size:.85rem; font-weight:500; cursor:pointer;
+    display:flex; align-items:center; gap:8px;
+    transition:border-color .2s, background .2s;
+    text-decoration:none; z-index:100;
+  }
+  .back-btn:hover { border-color:var(--accent); background:rgba(32,201,151,.06); }
+
+  /* Upload box */
+  .upload-box {
+    width:100%; max-width:560px; text-align:center;
+  }
+  .upload-box h2 { font-size:2.2rem; color:#fff; margin-bottom:10px; }
+  .upload-box .sub { color:var(--muted); margin-bottom:40px; }
+
+  .drop-zone {
+    border:2px dashed var(--border); border-radius:20px;
+    padding:64px 32px; cursor:pointer;
+    transition:border-color .25s, background .25s;
+    position:relative; background:var(--surface);
+  }
+  .drop-zone:hover, .drop-zone.dragging {
+    border-color:var(--accent); background:rgba(32,201,151,.05);
+  }
+  .drop-zone input[type=file] {
+    position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;
+  }
+  .drop-icon { font-size:3rem; margin-bottom:16px; display:block; }
+  .drop-zone h3 { color:#fff; margin-bottom:8px; }
+  .drop-zone p { color:var(--muted); font-size:.85rem; }
+
+  .file-preview {
+    display:none; margin-top:24px;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:20px;
+    align-items:center; gap:16px;
+  }
+  .file-preview.visible { display:flex; }
+  .preview-thumb { width:72px; height:72px; border-radius:10px; object-fit:cover; border:1px solid var(--border); }
+  .preview-info { text-align:left; flex:1; }
+  .preview-name { font-weight:500; color:#fff; font-size:.9rem; }
+  .preview-size { font-size:.75rem; color:var(--muted); }
+
+  .analyze-btn {
+    width:100%; margin-top:24px; padding:16px; border-radius:12px; border:none;
+    background:var(--accent); color:#000; font-size:1rem; font-weight:600;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px;
+    transition:background .2s, transform .2s; font-family:var(--sans);
+  }
+  .analyze-btn:hover { background:var(--accent2); transform:translateY(-2px); }
+  .analyze-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+
+  .spinner {
+    display:none; width:36px; height:36px;
+    border:3px solid var(--border); border-top-color:var(--accent);
+    border-radius:50%; animation:spin .7s linear infinite; margin:24px auto;
+  }
+  .spinner.visible { display:block; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  .error-box {
+    display:none; margin-top:16px;
+    background:rgba(255,94,94,.1); border:1px solid rgba(255,94,94,.3);
+    border-radius:12px; padding:16px 20px;
+    font-size:.88rem; color:#ff9090;
+  }
+  .error-box.visible { display:block; }
+</style>
+</head>
+<body>
+
+<a class="back-btn" href="index.html">← Back to Home</a>
+
+<div class="upload-box">
+  <h2>Upload MRI Scan</h2>
+  <p class="sub">Drop your brain MRI image below. We'll classify it in seconds.</p>
+
+  <div class="drop-zone" id="drop-zone">
+    <input type="file" id="file-input" accept="image/*" onchange="handleFile(this.files[0])"/>
+    <span class="drop-icon">🧠</span>
+    <h3>Drop MRI Image Here</h3>
+    <p>or click to browse &nbsp;·&nbsp; PNG, JPG, BMP, WEBP</p>
+  </div>
+
+  <div class="file-preview" id="file-preview">
+    <img id="preview-thumb" class="preview-thumb" src="" alt="preview"/>
+    <div class="preview-info">
+      <div class="preview-name" id="preview-name">—</div>
+      <div class="preview-size" id="preview-size">—</div>
+    </div>
+    <span style="cursor:pointer;color:var(--muted);font-size:1.2rem" onclick="clearFile()">✕</span>
+  </div>
+
+  <div class="spinner" id="spinner"></div>
+  <div class="error-box" id="error-box"></div>
+
+  <button class="analyze-btn" id="analyze-btn" onclick="analyzeImage()" disabled>
+    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+    </svg>
+    Analyze Scan
+  </button>
+</div>
+
+<script>
+const API = 'http://localhost:5000';
+let selectedFile = null;
+
+function handleFile(file) {
+  if (!file) return;
+  selectedFile = file;
+  const reader = new FileReader();
+  reader.onload = e => { document.getElementById('preview-thumb').src = e.target.result; };
+  reader.readAsDataURL(file);
+  document.getElementById('preview-name').textContent = file.name;
+  document.getElementById('preview-size').textContent = (file.size/1024).toFixed(1) + ' KB';
+  document.getElementById('file-preview').classList.add('visible');
+  document.getElementById('analyze-btn').disabled = false;
+  document.getElementById('error-box').classList.remove('visible');
+}
+
+function clearFile() {
+  selectedFile = null;
+  document.getElementById('file-input').value = '';
+  document.getElementById('file-preview').classList.remove('visible');
+  document.getElementById('analyze-btn').disabled = true;
+}
+
+// Drag and drop
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragging'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragging'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('dragging');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) handleFile(f);
+});
+
+async function analyzeImage() {
+  if (!selectedFile) return;
+  const btn = document.getElementById('analyze-btn');
+  const spinner = document.getElementById('spinner');
+  const errBox = document.getElementById('error-box');
+
+  btn.disabled = true;
+  spinner.classList.add('visible');
+  errBox.classList.remove('visible');
+  btn.textContent = 'Analyzing…';
+
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+
+  try {
+    const res = await fetch(`${API}/predict`, { method:'POST', body:formData });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // Save result to sessionStorage and navigate
+    sessionStorage.setItem('scanResult', JSON.stringify(data));
+    window.location.href = 'result.html';
+  } catch (err) {
+    errBox.textContent = '⚠️  Analysis failed: ' + err.message + ' — Make sure the backend server is running on localhost:5000';
+    errBox.classList.add('visible');
+  } finally {
+    spinner.classList.remove('visible');
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+    </svg> Analyze Scan`;
+  }
+}
+</script>
+</body>
+</html>

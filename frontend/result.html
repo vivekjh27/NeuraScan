@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NeuraScan — Results</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:       #060b14;
+    --surface:  #0d1828;
+    --surface2: #112035;
+    --border:   rgba(32,201,151,.15);
+    --accent:   #20c997;
+    --accent2:  #12b886;
+    --warn:     #ff5e5e;
+    --warn-soft:#3a1818;
+    --ok:       #00e49a;
+    --ok-soft:  #0a2e22;
+    --text:     #d1f2e5;
+    --muted:    #6a8aaa;
+    --serif:    "DM Serif Display", serif;
+    --sans:     "DM Sans", sans-serif;
+    --mono:     "Space Mono", monospace;
+  }
+  body {
+    background:var(--bg); color:var(--text);
+    font-family:var(--sans); font-size:16px; line-height:1.7;
+    padding:80px 24px 60px;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  h1,h2,h3,h4 { font-family:var(--serif); line-height:1.2; }
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--accent); border-radius:4px; }
+
+  .back-btn {
+    position:fixed; top:24px; left:24px;
+    background:var(--surface); border:1px solid var(--border);
+    color:var(--text); padding:10px 22px; border-radius:50px;
+    font-size:.85rem; font-weight:500; cursor:pointer;
+    display:flex; align-items:center; gap:8px;
+    transition:border-color .2s, background .2s;
+    text-decoration:none; z-index:100;
+  }
+  .back-btn:hover { border-color:var(--accent); background:rgba(32,201,151,.06); }
+
+  .result-wrap { width:100%; max-width:780px; }
+
+  .result-alert {
+    border-radius:16px; padding:32px; margin-bottom:32px;
+    display:flex; gap:20px; align-items:flex-start;
+    animation: fadeIn .4s ease;
+  }
+  .result-alert.bad  { background:var(--warn-soft); border:1px solid rgba(255,94,94,.3); }
+  .result-alert.good { background:var(--ok-soft);   border:1px solid rgba(0,228,154,.3); }
+  .alert-icon { font-size:2.4rem; flex-shrink:0; }
+  .alert-title { font-family:var(--serif); font-size:1.7rem; margin-bottom:8px; }
+  .result-alert.bad  .alert-title { color:var(--warn); }
+  .result-alert.good .alert-title { color:var(--ok); }
+  .alert-body { color:var(--muted); font-size:.93rem; }
+
+  .result-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:28px; }
+  .result-scan { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .result-scan img { width:100%; display:block; }
+  .scan-label { padding:12px 16px; font-family:var(--mono); font-size:.7rem; color:var(--muted); letter-spacing:.1em; text-transform:uppercase; border-top:1px solid var(--border); }
+
+  .prob-panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:24px; }
+  .prob-panel h4 { font-size:.75rem; font-family:var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:20px; }
+  .prob-row { margin-bottom:16px; }
+  .prob-row-header { display:flex; justify-content:space-between; margin-bottom:6px; font-size:.85rem; }
+  .prob-row-header .cls { color:var(--text); text-transform:capitalize; }
+  .prob-row-header .val { color:var(--accent); font-family:var(--mono); }
+  .prob-bar-bg { height:8px; background:var(--surface2); border-radius:4px; overflow:hidden; }
+  .prob-bar { height:100%; border-radius:4px; transition:width 1s cubic-bezier(.4,0,.2,1); width:0; }
+
+  .tumor-info-result { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:32px; margin-bottom:24px; animation:fadeIn .4s ease; }
+  .tumor-info-result h3 { color:#fff; font-size:1.5rem; margin-bottom:6px; }
+  .tumor-info-result .sub { color:var(--muted); font-size:.85rem; margin-bottom:24px; }
+  .tumor-fact-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-bottom:24px; }
+  .tumor-fact { background:var(--surface2); border-radius:10px; padding:16px; font-size:.85rem; }
+  .tumor-fact .label { color:var(--muted); font-size:.75rem; margin-bottom:4px; text-transform:uppercase; letter-spacing:.06em; }
+  .tumor-fact .value { color:var(--text); font-weight:500; }
+
+  .caution {
+    background:rgba(255,200,50,.07); border:1px solid rgba(255,200,50,.25);
+    border-radius:12px; padding:20px 24px;
+    display:flex; gap:14px; align-items:flex-start; margin-bottom:28px;
+  }
+  .caution .icon { font-size:1.4rem; flex-shrink:0; }
+  .caution p { font-size:.85rem; color:#c8b870; line-height:1.6; }
+  .caution strong { color:#e8d890; }
+
+  .action-btns { display:flex; gap:12px; }
+  .btn-scan-again {
+    flex:1; padding:14px; border-radius:12px;
+    border:1px solid var(--border); background:transparent;
+    color:var(--text); font-size:.95rem; cursor:pointer;
+    transition:border-color .2s, background .2s; text-decoration:none;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--sans);
+  }
+  .btn-scan-again:hover { border-color:var(--accent); background:rgba(32,201,151,.05); }
+  .btn-home {
+    flex:1; padding:14px; border-radius:12px;
+    border:none; background:var(--surface2);
+    color:var(--muted); font-size:.95rem; cursor:pointer;
+    transition:background .2s, color .2s; text-decoration:none;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--sans);
+  }
+  .btn-home:hover { background:rgba(32,201,151,.1); color:var(--text); }
+
+  .no-result {
+    text-align:center; padding:80px 24px;
+    color:var(--muted);
+  }
+  .no-result h2 { color:#fff; margin-bottom:12px; }
+
+  @keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+
+  @media(max-width:700px) {
+    .result-grid, .tumor-fact-grid { grid-template-columns:1fr; }
+    .action-btns { flex-direction:column; }
+  }
+</style>
+</head>
+<body>
+
+<div class="result-wrap" id="result-content">
+  <!-- populated by JS -->
+</div>
+
+<script>
+const TUMOR_DATA = {
+  glioma: {
+    color:'#ff6b6b', emoji:'🔴', name:'Glioma',
+    subtitle:'Arises from glial cells of the brain and spine',
+    stats:[{value:'~80%',label:'of malignant brain tumors'},{value:'Grade I–IV',label:'WHO classification'},{value:'~15 mo',label:'median survival (GBM)'}],
+    causes:['Ionizing radiation exposure','Rare inherited syndromes (NF1, Li-Fraumeni)','Genetic mutations (IDH, EGFR)','Spontaneous cellular mutations'],
+    symptoms:['Persistent worsening headaches','Seizures (new onset in adults)','Cognitive and personality changes','Nausea / vomiting'],
+    treatment:['Surgical resection','Radiation therapy','Temozolomide chemotherapy','Targeted therapy (bevacizumab)'],
+  },
+  meningioma: {
+    color:'#ffa94d', emoji:'🟠', name:'Meningioma',
+    subtitle:'Grows from the meninges — protective membranes surrounding the brain',
+    stats:[{value:'~37%',label:'of all primary brain tumors'},{value:'~90%',label:'benign (Grade I)'},{value:'F > M',label:'2:1 female predominance'}],
+    causes:['Prior radiation to the head','Neurofibromatosis type 2','Female sex hormones (possible link)','Chromosome 22 abnormalities'],
+    symptoms:['Headaches','Seizures','Blurred or double vision','Weakness in arms/legs'],
+    treatment:['Watchful waiting (small, asymptomatic)','Surgical resection','Stereotactic radiosurgery (Gamma Knife)','Conventional radiation for recurrent cases'],
+  },
+  pituitary: {
+    color:'#74c0fc', emoji:'🔵', name:'Pituitary Tumor',
+    subtitle:'Abnormal growths in the pituitary gland at the base of the brain',
+    stats:[{value:'~15%',label:'of all primary brain tumors'},{value:'Rarely',label:'cancerous (< 0.2%)'},{value:'10–15 mm',label:'avg. size at diagnosis'}],
+    causes:['Multiple endocrine neoplasia type 1 (MEN1)','Familial isolated pituitary adenoma','AIP gene mutations','Sporadic (most common)'],
+    symptoms:['Hormonal imbalances','Vision problems (bitemporal hemianopia)','Headaches','Unexplained weight changes'],
+    treatment:['Transsphenoidal surgery','Dopamine agonists (for prolactinomas)','Somatostatin analogues','Radiation therapy'],
+  },
+};
+
+const colors = { glioma:'#ff6b6b', meningioma:'#ffa94d', notumor:'#00e49a', pituitary:'#74c0fc' };
+
+function render(data) {
+  const isNoTumor = data.class === 'notumor';
+  const d = isNoTumor ? null : TUMOR_DATA[data.class];
+  const el = document.getElementById('result-content');
+
+  const probBars = Object.entries(data.probabilities).map(([cls,val]) => `
+    <div class="prob-row">
+      <div class="prob-row-header">
+        <span class="cls">${cls==='notumor'?'No Tumor':cls.charAt(0).toUpperCase()+cls.slice(1)}</span>
+        <span class="val">${val}%</span>
+      </div>
+      <div class="prob-bar-bg"><div class="prob-bar" data-w="${val}" style="background:${colors[cls]}"></div></div>
+    </div>`).join('');
+
+  const tumorInfoHTML = (!isNoTumor && d) ? `
+    <div class="tumor-info-result">
+      <h3>${d.name}</h3>
+      <div class="sub">${d.subtitle}</div>
+      <div class="tumor-fact-grid">
+        <div class="tumor-fact"><div class="label">Incidence</div><div class="value">${d.stats[0].value} ${d.stats[0].label}</div></div>
+        <div class="tumor-fact"><div class="label">Classification</div><div class="value">${d.stats[1].value} ${d.stats[1].label}</div></div>
+        <div class="tumor-fact"><div class="label">Common Symptoms</div><div class="value">${d.symptoms.slice(0,2).join(', ')}</div></div>
+        <div class="tumor-fact"><div class="label">Primary Treatment</div><div class="value">${d.treatment[0]}</div></div>
+      </div>
+      <div style="font-size:.88rem;color:var(--muted)">
+        <strong style="color:var(--text)">Known causes include:</strong> ${d.causes.join('; ')}.<br><br>
+        <strong style="color:var(--text)">Treatment options:</strong> ${d.treatment.join(', ')}.
+      </div>
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="result-alert ${isNoTumor?'good':'bad'}">
+      <div class="alert-icon">${isNoTumor?'🎉':'⚠️'}</div>
+      <div>
+        <div class="alert-title">${isNoTumor?'No Tumor Detected — Healthy Brain!':`Tumor Detected: ${d.name}`}</div>
+        <div class="alert-body">
+          ${isNoTumor
+            ? `Our AI model analyzed your MRI scan with <strong>${data.confidence}%</strong> confidence and found no signs of a brain tumor. Your scan appears to show a healthy brain. Continue regular health check-ups.`
+            : `Our AI model detected signs consistent with <strong>${d.name}</strong> in your MRI scan, with a confidence of <strong>${data.confidence}%</strong>. Please read the information below and consult a specialist immediately.`}
+        </div>
+      </div>
+    </div>
+
+    <div class="result-grid">
+      <div class="result-scan">
+        <img src="data:image/jpeg;base64,${data.image_b64}" alt="MRI scan"/>
+        <div class="scan-label">Uploaded MRI Scan</div>
+      </div>
+      <div class="prob-panel">
+        <h4>Classification Probabilities</h4>
+        ${probBars}
+      </div>
+    </div>
+
+    ${tumorInfoHTML}
+
+    ${!isNoTumor ? `
+    <div class="caution">
+      <div class="icon">⚠️</div>
+      <p><strong>Medical Disclaimer:</strong> This analysis is generated by an AI model for informational and educational purposes only. It is <strong>not a medical diagnosis</strong> and should not be used as a substitute for professional medical advice, diagnosis, or treatment. Please consult a qualified neurologist or neurosurgeon immediately.</p>
+    </div>` : ''}
+
+    ${data.demo_mode ? `
+    <div class="caution" style="margin-top:0;margin-bottom:24px">
+      <div class="icon">🔧</div>
+      <p><strong>Demo Mode:</strong> Backend is running without a trained model file. Results are simulated. Place your <code>model.keras</code> in the backend folder to enable real predictions.</p>
+    </div>` : ''}
+
+    <div class="action-btns">
+      <a class="btn-scan-again" href="upload.html">← Scan Another Image</a>
+      <a class="btn-home" href="index.html">🏠 Back to Home</a>
+    </div>
+  `;
+
+  setTimeout(() => {
+    document.querySelectorAll('.prob-bar').forEach(bar => { bar.style.width = bar.dataset.w + '%'; });
+  }, 200);
+}
+
+// Load result from sessionStorage
+window.addEventListener('load', () => {
+  const raw = sessionStorage.getItem('scanResult');
+  if (!raw) {
+    document.getElementById('result-content').innerHTML = `
+      <div class="no-result">
+        <h2>No scan result found</h2>
+        <p>Please upload an MRI scan first.</p>
+        <br>
+        <a href="upload.html" style="color:var(--accent)">← Go to Upload Page</a>
+      </div>`;
+    return;
+  }
+  render(JSON.parse(raw));
+});
+</script>
+</body>
+</html>
